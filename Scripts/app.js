@@ -1,14 +1,13 @@
-import { db } from './Scripts/firebase-config.js'; 
+import { db } from './Scripts/firebase-config.js'; // Asegúrate de que la ruta sea correcta
 import { collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Escuchamos el evento de submit directamente desde el JS, no desde el HTML
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('form'); // Esto selecciona tu formulario
+    const form = document.getElementById('collab-form');
+    
     if (form) {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            console.log("Detectado submit, enviando a Firebase...");
-
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
             const recurso = {
                 nombre: document.getElementById('collab-name').value,
                 categoria: document.getElementById('collab-category').value,
@@ -18,12 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
+                // Esto guarda en la colección "sugerencias"
                 await addDoc(collection(db, "sugerencias"), recurso);
-                alert("¡Guardado correctamente en la colección 'sugerencias'!");
+                alert("¡Guardado en Firestore!");
                 form.reset();
-            } catch (e) {
-                console.error("Error al guardar: ", e);
-                alert("Error: " + e.message);
+            } catch (error) {
+                console.error("Error al guardar: ", error);
+                alert("Error: " + error.message);
             }
         });
     }
