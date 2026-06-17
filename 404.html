@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recurso no disponible - EduShare</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0a0f1d',
+                            darker: '#05070f',
+                            primary: '#6366f1',
+                            secondary: '#a855f7',
+                            accent: '#3b82f6',
+                            card: '#111625',
+                            cardHover: '#1b233a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="Estilos/styles.css">
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col overflow-x-hidden bg-brand-darker">
+
+    <main class="flex-grow flex items-center justify-center relative px-4 py-12">
+        
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-500/10 rounded-full blur-3xl -z-10 animate-pulse-slow"></div>
+
+        <div class="max-w-md w-full text-center">
+            <div class="w-20 h-20 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-red-500/5">
+                <i data-lucide="alert-octagon" class="w-10 h-10 text-red-400"></i>
+            </div>
+
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 mb-4">
+                ERROR 404
+            </span>
+
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-4 leading-tight">
+                Recurso No Disponible
+            </h1>
+            
+            <p class="text-gray-400 text-sm mb-8 leading-relaxed">
+                El archivo, programa o plugin que estás buscando ha sido retirado de la nube de Drive, cambió de ubicación o el enlace fue reportado como caído por el grupo.
+            </p>
+
+            <div class="bg-brand-card border border-gray-800 rounded-2xl p-4 text-left mb-8 space-y-3">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">¿Qué puedes hacer?</h3>
+                
+                <a href="index.html" class="flex items-center gap-3 p-2.5 rounded-xl text-xs text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors group">
+                    <div class="w-7 h-7 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold">Usar el buscador principal</p>
+                        <p class="text-gray-500 text-[11px]">Intenta buscar otra versión del mismo archivo.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-600 ml-auto group-hover:text-gray-400 transition-colors"></i>
+                </a>
+
+                <button id="open-collab-404" class="w-full flex items-center gap-3 p-2.5 rounded-xl text-xs text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors group text-left">
+                    <div class="w-7 h-7 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400">
+                        <i data-lucide="message-square-plus" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold">Reportar link / Proponer reemplazo</p>
+                        <p class="text-gray-500 text-[11px]">Avísanos si tienes un enlace funcional de Drive.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-600 ml-auto group-hover:text-gray-400 transition-colors"></i>
+                </button>
+            </div>
+
+            <a href="index.html" class="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-black/40">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Volver a la Página de Inicio
+            </a>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            // Conectar el botón de reportar link con el sistema para enviar aviso
+            const reportBtn = document.getElementById('open-collab-404');
+            if (reportBtn) {
+                reportBtn.addEventListener('click', () => {
+                    alert('¡Gracias por el reporte! Puedes usar la sección "Aportar un recurso" en la página de inicio para mandarnos el link corregido.');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
