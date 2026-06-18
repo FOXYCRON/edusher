@@ -505,6 +505,21 @@
             lucide.createIcons();
         };
 
+        function parseDescription(text) {
+            if (!text) return '';
+
+            // Convertir saltos de línea a <br>
+            let parsed = text.replace(/\n/g, '<br>');
+
+            // Convertir (texto)[link] → <a href="link">texto</a>
+            parsed = parsed.replace(
+                /\((.*?)\)\[(https?:\/\/.*?)\]/g,
+                '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>'
+            );
+
+            return parsed;
+        }
+
         window.filterCategoryItems = () => {
             const query = document.getElementById('category-search-input').value.toLowerCase().trim();
             const grid = document.getElementById('category-items-grid');
@@ -566,7 +581,7 @@
             document.getElementById('detail-date').innerText = item.date;
             document.getElementById('detail-so').innerText = item.so;
             document.getElementById('detail-format').innerText = item.format;
-            document.getElementById('detail-description').innerText = item.description;
+            document.getElementById('detail-description').innerHTML = parseDescription(item.description);
             
             document.getElementById('detail-download-btn').setAttribute('href', item.downloadUrl);
 
