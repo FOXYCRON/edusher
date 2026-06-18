@@ -1,4 +1,4 @@
-import { db } from './Scripts/firebase-config.js'; // Asegúrate de que la ruta sea correcta
+import { db } from './firebase-config.js'; // Asegúrate de que la ruta sea correcta
 import { collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,14 +16,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 fecha: new Date().toISOString()
             };
 
-            try {
-                // Esto guarda en la colección "sugerencias"
-                await addDoc(collection(db, "sugerencias"), recurso);
-                alert("¡Guardado en Firestore!");
+        try {
+                console.log("Intentando guardar en la colección: sugerencias");
+                const docRef = await addDoc(collection(db, "sugerencias"), recurso);
+                
+                // Si esto se ejecuta, el dato SÍ salió de tu computadora
+                console.log("¡ÉXITO! Documento guardado con ID: ", docRef.id);
+                alert("¡Guardado correctamente! ID del documento: " + docRef.id);
+                
                 form.reset();
             } catch (error) {
-                console.error("Error al guardar: ", error);
-                alert("Error: " + error.message);
+                console.error("Error al guardar en Firebase: ", error);
+                alert("Error técnico: " + error.message);
             }
         });
     }
