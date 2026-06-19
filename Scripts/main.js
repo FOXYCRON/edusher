@@ -145,42 +145,73 @@
         };
 
         // ENVIAR RECURSO DESDE EL PORTAL (Se envía a la base de datos)
-        window.handleSubmitRecurso = async (event) => {
-            event.preventDefault();
-            
-            const name = document.getElementById('collab-name').value;
-            const category = document.getElementById('collab-category').value;
-            const link = document.getElementById('collab-link').value;
-            const desc = document.getElementById('collab-desc').value;
+            window.handleSubmitRecurso = async (event) => {
+                event.preventDefault();
 
-            const newSuggestion = {
-                name,
-                category,
-                link,
-                desc,
-                timestamp: Date.now()
-            };
+                console.log("🚀 Enviando formulario...");
 
-            if (dbEnabled && dbInstance) {
-                try {
-                    const suggCol = collection(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'suggestions');
-                    await addDoc(suggCol, newSuggestion);
-                    showToast('Propuesta en la nube', `Recurso "${name}" guardado de forma segura en el Panel Admin.`, 'cloud-upload');
-                } catch (e) {
-                    console.error(e);
+                // 🔹 Obtener valores seguros
+                const getVal = (id) => document.getElementById(id)?.value?.trim() || "";
+
+                const name = getVal('collab-name');
+                const category = getVal('collab-category');
+                const link = getVal('collab-link');
+                const description = getVal('collab-desc');
+
+                const newSuggestion = {
+                    name: name || "Sin nombre",
+                    category: category || "programas",
+                    link: link || "#",
+
+                    tagline: getVal('collab-tagline'),
+                    size: getVal('collab-size') || "Por definir",
+                    format: getVal('collab-format') || "Directo / Drive",
+                    so: getVal('collab-so') || "Multiplataforma",
+
+                    description: description || "Sin descripción",
+                    date: new Date().toLocaleDateString(),
+
+                    timestamp: Date.now()
+                };
+
+                console.log("📦 Datos a enviar:", newSuggestion);
+
+                // 🔥 Guardar
+                if (dbEnabled && dbInstance) {
+                    try {
+                        const suggCol = collection(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'suggestions');
+                        await addDoc(suggCol, newSuggestion);
+
+                        showToast('Guardado en la nube', `Recurso "${newSuggestion.name}" enviado correctamente.`, 'check-circle');
+                    } catch (e) {
+                        console.error("❌ Error Firebase:", e);
+                    }
+                } else {
+                    // modo local
+                    window.recursosSugeridos.push({
+                        cloudId: Date.now().toString(),
+                        ...newSuggestion
+                    });
+
+                    renderAdminPanel();
+                    showToast("Modo local", "Recurso guardado temporalmente", "check-circle");
                 }
-            } else {
-                // Simulación en memoria local en caso de que no haya conexión a internet
-                window.recursosSugeridos.push({ cloudId: Date.now().toString(), ...newSuggestion });
-                renderAdminPanel();
-                window.showToast("¡Genial!", "Tu recurso ha sido enviado a la base de datos", "check-circle");
-            }
 
-            closeCollabModal();
-            document.getElementById('collab-name').value = '';
-            document.getElementById('collab-link').value = '';
-            document.getElementById('collab-desc').value = '';
-        };
+                // 🔹 Limpiar inputs
+                document.getElementById('collab-name').value = '';
+                document.getElementById('collab-link').value = '';
+                document.getElementById('collab-desc').value = '';
+
+                if (document.getElementById('collab-tagline')) document.getElementById('collab-tagline').value = '';
+                if (document.getElementById('collab-size')) document.getElementById('collab-size').value = '';
+                if (document.getElementById('collab-format')) document.getElementById('collab-format').value = '';
+                if (document.getElementById('collab-so')) document.getElementById('collab-so').value = '';
+
+                // 🔹 Cerrar modal
+                closeCollabModal();
+
+                console.log("✅ Formulario enviado correctamente");
+            };
 
         // REPORTAR LINK CAÍDO (Se envía a la base de datos)
         window.reportBrokenLink = async () => {
@@ -215,12 +246,12 @@
                 id: data.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
                 name: data.name,
                 category: data.category,
-                tagline: data.desc ? data.desc.substring(0, 80) + '...' : 'Recurso sugerido por la comunidad.',
-                description: data.desc || 'Recurso aprobado por el administrador.',
-                size: "Por definir",
-                date: "Aprobado hoy",
-                so: "Multiplataforma",
-                format: "Directo / Drive",
+                tagline: data.tagline || (data.description ? data.description.substring(0, 80) + '...' : 'Recurso sugerido'),
+                description: data.description || 'Sin descripción',
+                size: data.size || "Por definir",
+                date: data.date || "Aprobado hoy",
+                so: data.so || "Multiplataforma",
+                format: data.format || "Directo / Drive",
                 icon: data.category === 'programas' ? 'terminal' : (data.category === 'archivos' ? 'file-text' : 'toy-brick'),
                 color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                 downloadUrl: data.link,
@@ -565,38 +596,32 @@
             lucide.createIcons();
         };
 
-        window.showResourceDetail = (id) => {
-            const item = resources.find(r => r.id === id);
-            if (!item) {
-                navigateTo('error');
-                return;
-            }
+            window.showResourceDetail = (id) => {
+                const item = resources.find(r => r.id === id);
+                if (!item) {
+                    navigateTo('error');
+                    return;
+                }
 
-            currentActiveItem = item;
-            navigateTo('detail');
+                currentActiveItem = item;
+                navigateTo('detail');
 
-            document.getElementById('detail-name').innerText = item.name;
-            document.getElementById('detail-tagline').innerText = item.tagline;
-            document.getElementById('detail-size').innerText = item.size;
-            document.getElementById('detail-date').innerText = item.date;
-            document.getElementById('detail-so').innerText = item.so;
-            document.getElementById('detail-format').innerText = item.format;
-            document.getElementById('detail-description').innerHTML = parseDescription(item.description);
-            
-            document.getElementById('detail-download-btn').setAttribute('href', item.downloadUrl);
+                document.getElementById('detail-name').innerText = item.name || "Sin nombre";
+                document.getElementById('detail-tagline').innerText = item.tagline || "Sin subtítulo";
+                document.getElementById('detail-size').innerText = item.size || "Por definir";
+                document.getElementById('detail-date').innerText = item.date || "Sin fecha";
+                document.getElementById('detail-so').innerText = item.so || "Multiplataforma";
+                document.getElementById('detail-format').innerText = item.format || "Directo / Drive";
 
-            const iconBg = document.getElementById('detail-icon-bg');
-            iconBg.className = `w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center flex-shrink-0 ${item.color}`;
-            iconBg.innerHTML = `<i data-lucide="${item.icon}" class="w-10 h-10 sm:w-12 sm:h-12"></i>`;
+                // 🔥 AQUÍ VA LA MAGIA (links tipo (texto)[url])
+                document.getElementById('detail-description').innerHTML =
+                    parseDescription(item.description || "Sin descripción");
 
-            const tagsContainer = document.getElementById('detail-tags');
-            tagsContainer.innerHTML = `
-                <span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">${item.category}</span>
-                <span class="text-xs bg-gray-800 text-gray-300 border border-gray-700 px-3 py-1 rounded-full font-semibold uppercase tracking-wider">${item.format}</span>
-            `;
+                document.getElementById('detail-download-btn')
+                    .setAttribute('href', item.downloadUrl || "#");
 
-            lucide.createIcons();
-        };
+                lucide.createIcons();
+            };
 
         window.goBackToCategory = () => {
             navigateToCategory(currentCategory);

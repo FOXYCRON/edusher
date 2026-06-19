@@ -496,8 +496,32 @@
                     <input type="url" required id="collab-link" placeholder="https://drive.google.com/..." class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
+    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción corta (vista previa)</label>
+    <input type="text" id="collab-tagline" placeholder="Ej: Versión ligera optimizada para estudiantes" class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500">
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+    <div>
+        <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Tamaño</label>
+        <input type="text" id="collab-size" placeholder="Ej: 2.3 GB" class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500">
+    </div>
+    <div>
+        <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Formato</label>
+        <input type="text" id="collab-format" placeholder="Ej: ZIP / EXE" class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500">
+    </div>
+</div>
+
+<div>
+    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Sistema Operativo</label>
+    <input type="text" id="collab-so" placeholder="Ej: Windows 10/11" class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500">
+</div>
+                <div>
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Notas, requisitos o Contraseñas</label>
-                    <textarea id="collab-desc" rows="3" placeholder="Ej: Se requiere desactivar firewall. No tiene contraseña de descompresión." class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500"></textarea>
+                    <textarea id="collab-desc" rows="5" placeholder="Ej:
+(Configurar instalador)[https://link.com]
+
+Paso 1...
+Paso 2..." class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-indigo-500"></textarea>
                 </div>
                 <button type="submit" class="w-full bg-gradient-brand text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:opacity-95">
                     Enviar a la Base de Datos
