@@ -220,6 +220,8 @@
             window.reportBrokenLink = async () => {
                 if (!currentActiveItem) return;
 
+                const categoria = currentActiveItem.category || "general";
+
                 const brokenReport = {
                     resourceId: currentActiveItem.id,
                     resourceName: currentActiveItem.name,
@@ -230,22 +232,23 @@
 
                 if (dbEnabled && dbInstance) {
                     try {
-                        const repCol = collection(dbInstance, 'recursos', 'reportes_enlaces', appIdVal);
+                        const repCol = collection(
+                            dbInstance,
+                            "recursos",
+                            "reportes_enlaces",
+                            categoria
+                        );
+
                         await addDoc(repCol, brokenReport);
 
                         showToast(
                             '¡Link Caído Reportado!',
-                            'Notificación enviada correctamente al panel de control.',
+                            'Se envió correctamente.',
                             'alert-triangle'
                         );
 
                     } catch (e) {
                         console.error("❌ Error:", e);
-                        showToast(
-                            'Error',
-                            'No se pudo enviar el reporte.',
-                            'alert-triangle'
-                        );
                     }
                 }
             };
