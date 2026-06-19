@@ -308,7 +308,7 @@
                         <div>
                             <span class="text-xs font-bold text-indigo-400 capitalize bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">${item.category}</span>
                             <h4 class="text-white font-bold text-md mt-1.5">${item.name}</h4>
-                            <p class="text-gray-400 text-xs mt-1 leading-relaxed">${item.desc || 'Sin descripción.'}</p>
+                            <p class="text-gray-400 text-xs mt-1 leading-relaxed">${item.tagline || 'Sin descripción.'}</p>
                             <a href="${item.link}" target="_blank" class="text-xs text-blue-400 hover:underline inline-flex items-center gap-1 mt-2 break-all">
                                 <i data-lucide="link" class="w-3 h-3"></i> Enlace Drive
                             </a>
@@ -484,7 +484,7 @@
                     <div class="flex-grow">
                         <div class="flex items-center justify-between mb-1">
                             <span class="text-xs font-bold text-indigo-400 capitalize">${item.category}</span>
-                            <span class="text-xs text-gray-500">${item.size}</span>
+                            <span class="text-xs bg-gray-900 border border-gray-800 text-gray-400 px-2.5 py-1 rounded-full font-semibold">${item.size}</span>
                         </div>
                         <h3 class="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors mb-1.5">${item.name}</h3>
                         <p class="text-gray-400 text-sm line-clamp-2">${item.tagline}</p>
