@@ -126,7 +126,7 @@
         const listenToCloudData = () => {
             if (!dbEnabled || !dbInstance) return;
 
-            // Carpeta de sugerencias
+            // 🔹 SUGERENCIAS
             const suggCol = collection(dbInstance, 'sugerencias');
             onSnapshot(suggCol, (snapshot) => {
                 window.recursosSugeridos = [];
@@ -134,17 +134,33 @@
                     window.recursosSugeridos.push({ cloudId: doc.id, ...doc.data() });
                 });
                 renderAdminPanel();
-            }, (error) => console.error("Error cargando sugerencias: ", error));
+            });
 
-            // Carpeta de reportes
-            const repCol = collection(dbInstance, 'reportes_enlaces');
-            onSnapshot(repCol, (snapshot) => {
-                window.reportesCaidos = [];
-                snapshot.forEach((doc) => {
-                    window.reportesCaidos.push({ cloudId: doc.id, ...doc.data() });
+            // 🔥 REPORTES POR CATEGORÍA
+            const categorias = ["programas", "archivos", "plugins", "general"];
+
+            categorias.forEach((cat) => {
+                const repCol = collection(dbInstance, "recursos", "reportes_enlaces", cat);
+
+                onSnapshot(repCol, (snapshot) => {
+                    const nuevos = [];
+
+                    snapshot.forEach((doc) => {
+                        nuevos.push({
+                            cloudId: doc.id,
+                            categoria: cat,
+                            ...doc.data()
+                        });
+                    });
+
+                    // reemplazar solo esa categoría
+                    window.reportesCaidos = window.reportesCaidos
+                        .filter(r => r.categoria !== cat)
+                        .concat(nuevos);
+
+                    renderAdminPanel();
                 });
-                renderAdminPanel();
-            }, (error) => console.error("Error cargando reportes: ", error));
+            });
         };
 
         // ENVIAR RECURSO DESDE EL PORTAL (Se envía a la base de datos)
@@ -220,36 +236,42 @@
             window.reportBrokenLink = async () => {
                 if (!currentActiveItem) return;
 
+                if (!dbEnabled || !dbInstance) {
+                    console.warn("⚠️ Firebase no listo");
+                    return;
+                }
+
                 const categoria = currentActiveItem.category || "general";
 
                 const brokenReport = {
                     resourceId: currentActiveItem.id,
                     resourceName: currentActiveItem.name,
                     downloadUrl: currentActiveItem.downloadUrl,
+                    category: categoria,
                     timestamp: Date.now(),
                     status: 'pendiente'
                 };
 
-                if (dbEnabled && dbInstance) {
-                    try {
-                        const repCol = collection(
-                            dbInstance,
-                            "recursos",
-                            "reportes_enlaces",
-                            categoria
-                        );
+                try {
+                    const repCol = collection(
+                        dbInstance,
+                        "recursos",
+                        "reportes_enlaces",
+                        categoria
+                    );
 
-                        await addDoc(repCol, brokenReport);
+                    await addDoc(repCol, brokenReport);
 
-                        showToast(
-                            '¡Link Caído Reportado!',
-                            'Se envió correctamente.',
-                            'alert-triangle'
-                        );
+                    console.log("✅ Reporte enviado:", brokenReport);
 
-                    } catch (e) {
-                        console.error("❌ Error:", e);
-                    }
+                    showToast(
+                        '¡Link Caído Reportado!',
+                        'Se envió correctamente.',
+                        'alert-triangle'
+                    );
+
+                } catch (e) {
+                    console.error("❌ Error enviando reporte:", e);
                 }
             };
 
@@ -294,16 +316,25 @@
                 }
             };
 
-        window.removeReport = async (cloudId) => {
-            if (dbEnabled && dbInstance) {
-                const docRef = doc(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'reports', cloudId);
-                await deleteDoc(docRef);
-            } else {
-                window.reportesCaidos = window.reportesCaidos.filter(r => r.cloudId !== cloudId);
-                renderAdminPanel();
-            }
-        };
+            window.removeReport = async (cloudId, categoria) => {
+                try {
+                    const docRef = doc(
+                        dbInstance,
+                        "recursos",
+                        "reportes_enlaces",
+                        categoria,
+                        cloudId
+                    );
 
+                    await deleteDoc(docRef);
+
+                    showToast("Corregido", "Reporte eliminado correctamente", "check-circle");
+
+                } catch (e) {
+                    console.error("❌ Error eliminando reporte:", e);
+                }
+            };
+            
         // RENDERIZADOR DEL PANEL DE CONTROL PRIVADO (HTML)
         const renderAdminPanel = () => {
             const suggContainer = document.getElementById('admin-suggestions-container');
@@ -372,6 +403,9 @@
                                 <span class="text-xs font-bold uppercase tracking-wider">RECURSO INACCESIBLE</span>
                             </div>
                             <h4 class="text-white font-bold text-md mt-1">${item.resourceName}</h4>
+                            <p class="text-xs text-gray-400">
+                                Estado: <span class="text-yellow-400">${item.status}</span>
+                            </p>
                             <p class="text-gray-500 text-xs mt-1">Identificador del recurso: ${item.resourceId}</p>
                         </div>
                         <div class="flex gap-2 border-t border-gray-800/80 pt-3">
@@ -387,7 +421,7 @@
 
                     // Adjuntar listener de corrección
                     document.getElementById(`btn-fix-${item.cloudId}`).addEventListener('click', () => {
-                        removeReport(item.cloudId);
+                        removeReport(item.cloudId, item.categoria);
                     });
                 });
             }
@@ -674,7 +708,3 @@
             document.getElementById('collab-modal').classList.add('hidden');
             document.getElementById('collab-modal').classList.remove('flex');
         };
-        
-        if (querySnapshot.empty) {
-    navigateTo('error'); // Te lleva directo a tu sección de "No encontrado"
-}
