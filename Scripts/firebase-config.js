@@ -1,5 +1,10 @@
-import { db } from './firebase-config.js'; // Asegúrate de que la ruta sea correcta
-import { collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// Scripts/firebase-config.js
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// (Opcional)
+import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBhGyKRRDL3EDHJYsi5nuQv6NC6AoMMtxw",
@@ -11,6 +16,14 @@ const firebaseConfig = {
   measurementId: "G-Z4VSZRWPY0"
 };
 
+// Inicializar app
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app); // ¡Esta línea es obligatoria!
-console.log("Firestore inicializado con el proyecto:", firebaseConfig.projectId); // Esto te dirá en consola si se exportó bien
+
+// 🔥 FIRESTORE (CLAVE)
+const db = getFirestore(app);
+
+// (Opcional)
+const analytics = getAnalytics(app);
+
+// 🔥 EXPORTAR
+export { db };

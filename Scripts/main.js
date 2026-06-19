@@ -1,8 +1,7 @@
         // Importación de módulos Firebase para almacenamiento en tiempo real en la nube
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         // BASE DE DATOS DE RECURSOS ORIGINALES
         const resources = [
             {
@@ -96,26 +95,30 @@
 
         // Inicialización y autenticación de base de datos segura para almacenamiento público
         const initCloudDatabase = async () => {
-            if (typeof __firebase_config !== 'undefined') {
-                try {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    authInstance = getAuth(app);
-                    dbInstance = getFirestore(app);
-                    dbEnabled = true;
+            try {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyBhGyKRRDL3EDHJYsi5nuQv6NC6AoMMtxw",
+                    authDomain: "edushare-6c6dc.firebaseapp.com",
+                    projectId: "edushare-6c6dc",
+                    storageBucket: "edushare-6c6dc.firebasestorage.app",
+                    messagingSenderId: "79794860583",
+                    appId: "1:79794860583:web:1be58b82ed5e77b9845402"
+                };
 
-                    // Autenticación anónima para que todos los compañeros puedan subir
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(authInstance, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(authInstance);
-                    }
+                const app = initializeApp(firebaseConfig);
+                authInstance = getAuth(app);
+                dbInstance = getFirestore(app);
 
-                    // Suscribirse a sugerencias y reportes en tiempo real
-                    listenToCloudData();
-                } catch (e) {
-                    console.warn("Base de datos local activa (simulada por fallback):", e);
-                }
+                await signInAnonymously(authInstance);
+
+                dbEnabled = true;
+
+                console.log("🔥 Firebase conectado correctamente");
+
+                listenToCloudData();
+
+            } catch (e) {
+                console.error("❌ Error Firebase:", e);
             }
         };
 
@@ -124,7 +127,7 @@
             if (!dbEnabled || !dbInstance) return;
 
             // Carpeta de sugerencias
-            const suggCol = collection(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'suggestions');
+            const suggCol = collection(dbInstance, 'sugerencias');
             onSnapshot(suggCol, (snapshot) => {
                 window.recursosSugeridos = [];
                 snapshot.forEach((doc) => {
@@ -134,7 +137,7 @@
             }, (error) => console.error("Error cargando sugerencias: ", error));
 
             // Carpeta de reportes
-            const repCol = collection(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'reports');
+            const repCol = collection(dbInstance, 'reportes_enlaces');
             onSnapshot(repCol, (snapshot) => {
                 window.reportesCaidos = [];
                 snapshot.forEach((doc) => {
@@ -179,7 +182,7 @@
                 // 🔥 Guardar
                 if (dbEnabled && dbInstance) {
                     try {
-                        const suggCol = collection(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'suggestions');
+                        const suggCol = collection(dbInstance, 'sugerencias');
                         await addDoc(suggCol, newSuggestion);
 
                         showToast('Guardado en la nube', `Recurso "${newSuggestion.name}" enviado correctamente.`, 'check-circle');
@@ -214,30 +217,38 @@
             };
 
         // REPORTAR LINK CAÍDO (Se envía a la base de datos)
-        window.reportBrokenLink = async () => {
-            if (!currentActiveItem) return;
+            window.reportBrokenLink = async () => {
+                if (!currentActiveItem) return;
 
-            const brokenReport = {
-                resourceId: currentActiveItem.id,
-                resourceName: currentActiveItem.name,
-                downloadUrl: currentActiveItem.downloadUrl,
-                timestamp: Date.now()
-            };
+                const brokenReport = {
+                    resourceId: currentActiveItem.id,
+                    resourceName: currentActiveItem.name,
+                    downloadUrl: currentActiveItem.downloadUrl,
+                    timestamp: Date.now(),
+                    status: 'pendiente'
+                };
 
-            if (dbEnabled && dbInstance) {
-                try {
-                    const repCol = collection(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'reports');
-                    await addDoc(repCol, brokenReport);
-                    showToast('¡Link Caído Reportado!', 'Notificación subida al Panel de Control de manera anónima.', 'alert-triangle');
-                } catch (e) {
-                    console.error(e);
+                if (dbEnabled && dbInstance) {
+                    try {
+                        const repCol = collection(dbInstance, 'recursos', 'reportes_enlaces', appIdVal);
+                        await addDoc(repCol, brokenReport);
+
+                        showToast(
+                            '¡Link Caído Reportado!',
+                            'Notificación enviada correctamente al panel de control.',
+                            'alert-triangle'
+                        );
+
+                    } catch (e) {
+                        console.error("❌ Error:", e);
+                        showToast(
+                            'Error',
+                            'No se pudo enviar el reporte.',
+                            'alert-triangle'
+                        );
+                    }
                 }
-            } else {
-                window.reportesCaidos.push({ cloudId: Date.now().toString(), ...brokenReport });
-                renderAdminPanel();
-                showToast('Reporte guardado', 'Reporte registrado temporalmente en memoria local.', 'alert-triangle');
-            }
-        };
+            };
 
         // CONTROLADOR DE ACCIONES EN PANEL ADMINISTRADOR (APROBAR/RECHAZAR)
         window.approveSuggestion = async (cloudId, data) => {
@@ -266,15 +277,19 @@
             showToast('Aprobado con éxito', `El elemento "${data.name}" se integró al buscador en tiempo real.`, 'check-circle');
         };
 
-        window.removeSuggestion = async (cloudId) => {
-            if (dbEnabled && dbInstance) {
-                const docRef = doc(dbInstance, 'artifacts', appIdVal, 'public', 'data', 'suggestions', cloudId);
-                await deleteDoc(docRef);
-            } else {
-                window.recursosSugeridos = window.recursosSugeridos.filter(r => r.cloudId !== cloudId);
-                renderAdminPanel();
-            }
-        };
+            window.removeSuggestion = async (cloudId) => {
+                if (dbEnabled && dbInstance) {
+                    try {
+                        const docRef = doc(dbInstance, 'sugerencias', cloudId);
+                        await deleteDoc(docRef);
+                    } catch (e) {
+                        console.error("❌ Error eliminando:", e);
+                    }
+                } else {
+                    window.recursosSugeridos = window.recursosSugeridos.filter(r => r.cloudId !== cloudId);
+                    renderAdminPanel();
+                }
+            };
 
         window.removeReport = async (cloudId) => {
             if (dbEnabled && dbInstance) {
