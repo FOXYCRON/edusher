@@ -1,7 +1,17 @@
         // Importación de módulos Firebase para almacenamiento en tiempo real en la nube
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            addDoc, 
+            onSnapshot, 
+            deleteDoc,
+            setDoc,
+            getDoc   // 🔥 ESTE TE FALTABA
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // BASE DE DATOS DE RECURSOS ORIGINALES
         const resources = [
             {
@@ -17,7 +27,9 @@
                 icon: "terminal",
                 color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
                 downloadUrl: "https://drive.google.com/drive/folders/dummy1",
-                isFeatured: true
+                isFeatured: true,
+
+                fromCloud: false
             },
             {
                 id: "matlab-r2024",
@@ -32,7 +44,9 @@
                 icon: "binary",
                 color: "text-rose-400 bg-rose-500/10 border-rose-500/20",
                 downloadUrl: "https://drive.google.com/drive/folders/dummy2",
-                isFeatured: true
+                isFeatured: true,
+
+                fromCloud: false
             },
             {
                 id: "apuntes-redes-completos",
@@ -47,7 +61,9 @@
                 icon: "file-text",
                 color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
                 downloadUrl: "https://drive.google.com/drive/folders/dummy5",
-                isFeatured: true
+                isFeatured: true,
+
+                fromCloud: false
             },
             {
                 id: "formulario-calculo-vectorial",
@@ -62,7 +78,9 @@
                 icon: "sigma",
                 color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                 downloadUrl: "https://drive.google.com/drive/folders/dummy7",
-                isFeatured: true
+                isFeatured: true,
+
+                fromCloud: false
             },
             {
                 id: "autocad-hatch-library",
@@ -77,7 +95,9 @@
                 icon: "brush",
                 color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
                 downloadUrl: "https://drive.google.com/drive/folders/dummy9",
-                isFeatured: false
+                isFeatured: false,
+
+                fromCloud: false
             }
         ];
 
@@ -122,45 +142,73 @@
             }
         };
 
+
+        const categorias = ["programas", "archivos", "plugins"];
+
         // Escucha en tiempo real de sugerencias y reportes desde la base de datos de Google Drive
         const listenToCloudData = () => {
             if (!dbEnabled || !dbInstance) return;
 
+            // =========================
             // 🔹 SUGERENCIAS
-            const suggCol = collection(dbInstance, 'sugerencias');
-            onSnapshot(suggCol, (snapshot) => {
-                window.recursosSugeridos = [];
-                snapshot.forEach((doc) => {
-                    window.recursosSugeridos.push({ cloudId: doc.id, ...doc.data() });
-                });
-                renderAdminPanel();
-            });
+            // =========================
+            const suggCol = collection(dbInstance, "sugerencias");
 
-            // 🔥 REPORTES POR CATEGORÍA
-            const categorias = ["programas", "archivos", "plugins", "general"];
+                onSnapshot(suggCol, (snapshot) => {
+                    window.recursosSugeridos = [];
 
-            categorias.forEach((cat) => {
-                const repCol = collection(dbInstance, "recursos", "reportes_enlaces", cat);
+                    snapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
 
-                onSnapshot(repCol, (snapshot) => {
-                    const nuevos = [];
-
-                    snapshot.forEach((doc) => {
-                        nuevos.push({
-                            cloudId: doc.id,
-                            categoria: cat,
-                            ...doc.data()
+                        window.recursosSugeridos.push({
+                            cloudId: docSnap.id,
+                            ...data // ya incluye category
                         });
                     });
 
-                    // reemplazar solo esa categoría
-                    window.reportesCaidos = window.reportesCaidos
-                        .filter(r => r.categoria !== cat)
-                        .concat(nuevos);
+                    renderAdminPanel();
+                });
+
+            // =========================
+            // 🔥 RECURSOS APROBADOS (AQUÍ ESTÁ LA MAGIA)
+            // =========================
+            const approvedCol = collection(dbInstance, "recursos_aprobados");
+
+                onSnapshot(approvedCol, (snapshot) => {
+
+                    // limpiar solo los de firebase
+                    for (let i = resources.length - 1; i >= 0; i--) {
+                        if (resources[i].fromCloud) {
+                            resources.splice(i, 1);
+                        }
+                    }
+
+                    snapshot.forEach((docSnap) => {
+                        resources.push({
+                            id: docSnap.id,
+                            fromCloud: true,
+                            ...docSnap.data()
+                        });
+                    });
+
+                    renderCategoryItems();
+                    renderRecentUploads();
+                });
+
+            const repCol = collection(dbInstance, "reportes_enlaces");
+
+                onSnapshot(repCol, (snapshot) => {
+                    window.reportesCaidos = [];
+
+                    snapshot.forEach((docSnap) => {
+                        window.reportesCaidos.push({
+                            cloudId: docSnap.id,
+                            ...docSnap.data()
+                        });
+                    });
 
                     renderAdminPanel();
                 });
-            });
         };
 
         // ENVIAR RECURSO DESDE EL PORTAL (Se envía a la base de datos)
@@ -181,6 +229,7 @@
                     name: name || "Sin nombre",
                     category: category || "programas",
                     link: link || "#",
+                    icon: getVal('collab-icon') || "terminal",
 
                     tagline: getVal('collab-tagline'),
                     size: getVal('collab-size') || "Por definir",
@@ -198,7 +247,7 @@
                 // 🔥 Guardar
                 if (dbEnabled && dbInstance) {
                     try {
-                        const suggCol = collection(dbInstance, 'sugerencias');
+                         const suggCol = collection(dbInstance, "sugerencias");
                         await addDoc(suggCol, newSuggestion);
 
                         showToast('Guardado en la nube', `Recurso "${newSuggestion.name}" enviado correctamente.`, 'check-circle');
@@ -232,6 +281,22 @@
                 console.log("✅ Formulario enviado correctamente");
             };
 
+            // ACTUALIZAR RECURSO (Solo en la base de datos)
+            window.updateResource = async (id, category, newData) => {
+                try {
+                    await setDoc(
+                    doc(dbInstance, "recursos_aprobados", id),
+                    newData,
+                    { merge: true }
+                );
+
+                    showToast("Actualizado", "Recurso actualizado correctamente", "check");
+
+                } catch (e) {
+                    console.error("❌ Error actualizando:", e);
+                }
+            };
+
         // REPORTAR LINK CAÍDO (Se envía a la base de datos)
             window.reportBrokenLink = async () => {
                 if (!currentActiveItem) return;
@@ -253,14 +318,12 @@
                 };
 
                 try {
-                    const repCol = collection(
-                        dbInstance,
-                        "recursos",
-                        "reportes_enlaces",
-                        categoria
-                    );
+                        const repCol = collection(
+                            dbInstance,
+                            "reportes_enlaces"
+                        );
 
-                    await addDoc(repCol, brokenReport);
+                        await addDoc(repCol, brokenReport);
 
                     console.log("✅ Reporte enviado:", brokenReport);
 
@@ -275,65 +338,106 @@
                 }
             };
 
+            const getIconByCategory = (category) => {
+                if (category === "programas") return "binary";
+                if (category === "archivos") return "file-text";
+                if (category === "plugins") return "puzzle";
+                return "box";
+            };
+
         // CONTROLADOR DE ACCIONES EN PANEL ADMINISTRADOR (APROBAR/RECHAZAR)
-        window.approveSuggestion = async (cloudId, data) => {
-            // Se formatea para agregarlo a la lista de descargas públicas
-            const finalResource = {
-                id: data.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-                name: data.name,
-                category: data.category,
-                tagline: data.tagline || (data.description ? data.description.substring(0, 80) + '...' : 'Recurso sugerido'),
-                description: data.description || 'Sin descripción',
-                size: data.size || "Por definir",
-                date: data.date || "Aprobado hoy",
-                so: data.so || "Multiplataforma",
-                format: data.format || "Directo / Drive",
-                icon: data.category === 'programas' ? 'terminal' : (data.category === 'archivos' ? 'file-text' : 'toy-brick'),
-                color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-                downloadUrl: data.link,
-                isFeatured: true
-            };
-
-            resources.unshift(finalResource);
-            renderRecentUploads();
-
-            // Eliminar de sugerencias
-            await removeSuggestion(cloudId);
-            showToast('Aprobado con éxito', `El elemento "${data.name}" se integró al buscador en tiempo real.`, 'check-circle');
-        };
-
-            window.removeSuggestion = async (cloudId) => {
-                if (dbEnabled && dbInstance) {
-                    try {
-                        const docRef = doc(dbInstance, 'sugerencias', cloudId);
-                        await deleteDoc(docRef);
-                    } catch (e) {
-                        console.error("❌ Error eliminando:", e);
-                    }
-                } else {
-                    window.recursosSugeridos = window.recursosSugeridos.filter(r => r.cloudId !== cloudId);
-                    renderAdminPanel();
-                }
-            };
-
-            window.removeReport = async (cloudId, categoria) => {
+            window.approveSuggestion = async (cloudId) => {
                 try {
-                    const docRef = doc(
-                        dbInstance,
-                        "recursos",
-                        "reportes_enlaces",
-                        categoria,
-                        cloudId
+
+                    const ref = doc(dbInstance, "sugerencias", cloudId);
+
+                    // 🔥 1. PRIMERO toma lo que tienes en memoria (editado)
+                    const localItem = window.recursosSugeridos.find(r => r.cloudId === cloudId);
+
+                    if (!localItem) {
+                        console.error("❌ No se encontró en memoria");
+                        return;
+                    }
+
+                    // 🔥 2. GUARDA LOS CAMBIOS EDITADOS EN FIREBASE
+                    await setDoc(ref, localItem, { merge: true });
+
+                    // 🔥 3. AHORA SÍ lee actualizado
+                    const snap = await getDoc(ref);
+                    const item = snap.data();
+
+                    // 🔥 4. CREAR RECURSO FINAL
+                    const finalResource = {
+                        id: cloudId,
+
+                        name: item.name || "Sin nombre",
+                        category: item.category || "programas",
+
+                        tagline: item.tagline || "",
+                        description: item.description || "",
+
+                        size: item.size || "Por definir",
+                        so: item.so || "Multiplataforma",
+                        format: item.format || "Directo",
+
+                        icon: item.icon || getIconByCategory(item.category),
+
+                        color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+
+                        downloadUrl: item.downloadUrl || item.link || "#",
+
+                        isFeatured: true,
+                        fromCloud: true,
+
+                        date: new Date().toLocaleDateString()
+                    };
+
+                    // 🔥 5. GUARDAR EN APROBADOS
+                    await setDoc(
+                        doc(dbInstance, "recursos_aprobados", cloudId),
+                        finalResource
                     );
 
-                    await deleteDoc(docRef);
+                    // 🔥 6. BORRAR SUGERENCIA
+                    await deleteDoc(ref);
 
-                    showToast("Corregido", "Reporte eliminado correctamente", "check-circle");
+                    showToast("Aprobado", "Ahora sí respeta los cambios", "check-circle");
 
                 } catch (e) {
-                    console.error("❌ Error eliminando reporte:", e);
+                    console.error("❌ Error aprobando:", e);
                 }
             };
+
+        window.removeSuggestion = async (cloudId, categoria) => {
+            if (!categoria) {
+                console.error("❌ Falta categoria en removeSuggestion");
+                return;
+            }
+
+            try {
+                await deleteDoc(
+                    doc(dbInstance, "sugerencias", cloudId)
+                );
+
+                console.log("🗑️ Eliminado:", cloudId, categoria);
+
+            } catch (e) {
+                console.error("❌ Error eliminando sugerencia:", e);
+            }
+        };
+
+        window.removeReport = async (cloudId) => {
+            try {
+                await deleteDoc(
+                    doc(dbInstance, "reportes_enlaces", cloudId)
+                );
+
+                showToast("Corregido", "Reporte eliminado correctamente", "check-circle");
+
+            } catch (e) {
+                console.error("❌ Error eliminando reporte:", e);
+            }
+        };
             
         // RENDERIZADOR DEL PANEL DE CONTROL PRIVADO (HTML)
         const renderAdminPanel = () => {
@@ -374,13 +478,18 @@
                     suggContainer.appendChild(row);
 
                     // Adjuntar listeners de eventos de manera segura
-                    document.getElementById(`btn-approve-${item.cloudId}`).addEventListener('click', () => {
-                        approveSuggestion(item.cloudId, item);
+                    // ✅ BOTÓN APROBAR
+                    document.getElementById(`btn-approve-${item.cloudId}`)
+                        .addEventListener('click', () => {
+                            approveSuggestion(item.cloudId, item.category);
+                        });
+
+                    // ✅ BOTÓN RECHAZAR
+                    document.getElementById(`btn-reject-${item.cloudId}`)
+                        .addEventListener('click', () => {
+                            removeSuggestion(item.cloudId, item.category);
+                        });
                     });
-                    document.getElementById(`btn-reject-${item.cloudId}`).addEventListener('click', () => {
-                        removeSuggestion(item.cloudId);
-                    });
-                });
             }
 
             // Renderizar Reportes de enlaces rotos
@@ -420,8 +529,10 @@
                     repContainer.appendChild(row);
 
                     // Adjuntar listener de corrección
-                    document.getElementById(`btn-fix-${item.cloudId}`).addEventListener('click', () => {
-                        removeReport(item.cloudId, item.categoria);
+                    document
+                        .getElementById(`btn-fix-${item.cloudId}`)
+                        .addEventListener('click', () => {
+                        window.removeReport(item.cloudId, item.category);
                     });
                 });
             }
@@ -648,32 +759,48 @@
             lucide.createIcons();
         };
 
-            window.showResourceDetail = (id) => {
-                const item = resources.find(r => r.id === id);
-                if (!item) {
-                    navigateTo('error');
-                    return;
-                }
+        window.showResourceDetail = (id) => {
+            const item = resources.find(r => r.id === id);
 
-                currentActiveItem = item;
-                navigateTo('detail');
+            if (!item) {
+                navigateTo('error');
+                return;
+            }
 
-                document.getElementById('detail-name').innerText = item.name || "Sin nombre";
-                document.getElementById('detail-tagline').innerText = item.tagline || "Sin subtítulo";
-                document.getElementById('detail-size').innerText = item.size || "Por definir";
-                document.getElementById('detail-date').innerText = item.date || "Sin fecha";
-                document.getElementById('detail-so').innerText = item.so || "Multiplataforma";
-                document.getElementById('detail-format').innerText = item.format || "Directo / Drive";
+            currentActiveItem = item;
+            navigateTo('detail');
 
-                // 🔥 AQUÍ VA LA MAGIA (links tipo (texto)[url])
-                document.getElementById('detail-description').innerHTML =
-                    parseDescription(item.description || "Sin descripción");
+            document.getElementById('detail-name').innerText = item.name || "Sin nombre";
+            document.getElementById('detail-tagline').innerText = item.tagline || "Sin subtítulo";
+            document.getElementById('detail-size').innerText = item.size || "Por definir";
+            document.getElementById('detail-date').innerText = item.date || "Sin fecha";
+            document.getElementById('detail-so').innerText = item.so || "Multiplataforma";
+            document.getElementById('detail-format').innerText = item.format || "Directo / Drive";
 
-                document.getElementById('detail-download-btn')
-                    .setAttribute('href', item.downloadUrl || "#");
+            // 🔥 descripción con links
+            document.getElementById('detail-description').innerHTML =
+                parseDescription(item.description || "Sin descripción");
+
+            // 🔥 botón descarga
+            document.getElementById('detail-download-btn')
+                .setAttribute('href', item.downloadUrl || "#");
+
+            // 🔥 ICONO DINÁMICO (ESTO TE FALTABA)
+            const iconContainer = document.getElementById('detail-icon');
+            if (iconContainer) {
+                iconContainer.innerHTML = "";
+
+                const iconEl = document.createElement("i");
+                iconEl.setAttribute("data-lucide", item.icon || "box");
+                iconEl.className = "w-10 h-10";
+
+                iconContainer.appendChild(iconEl);
 
                 lucide.createIcons();
-            };
+            }
+
+            lucide.createIcons();
+        };
 
         window.goBackToCategory = () => {
             navigateToCategory(currentCategory);
