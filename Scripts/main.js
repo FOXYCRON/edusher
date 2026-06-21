@@ -176,24 +176,31 @@
 
                 onSnapshot(approvedCol, (snapshot) => {
 
-                    // limpiar solo los de firebase
-                    for (let i = resources.length - 1; i >= 0; i--) {
-                        if (resources[i].fromCloud) {
-                            resources.splice(i, 1);
-                        }
-                    }
+                const cloudMap = new Map();
 
-                    snapshot.forEach((docSnap) => {
-                        resources.push({
-                            id: docSnap.id,
-                            fromCloud: true,
-                            ...docSnap.data()
-                        });
+                snapshot.forEach((docSnap) => {
+                    cloudMap.set(docSnap.id, {
+                        id: docSnap.id,
+                        fromCloud: true,
+                        ...docSnap.data()
                     });
-
-                    renderCategoryItems();
-                    renderRecentUploads();
                 });
+
+                // 🔥 eliminar solo los cloud
+                for (let i = resources.length - 1; i >= 0; i--) {
+                    if (resources[i].fromCloud) {
+                        resources.splice(i, 1);
+                    }
+                }
+
+                // 🔥 meter sin duplicar
+                if (cloudMap.size > 0) {
+                    resources.push(...cloudMap.values());
+                }
+
+                renderCategoryItems();
+                renderRecentUploads();
+            });
 
             const repCol = collection(dbInstance, "reportes_enlaces");
 
@@ -310,9 +317,9 @@
 
                 const brokenReport = {
                     resourceId: currentActiveItem.id,
-                    resourceName: currentActiveItem.name,
+                    name: currentActiveItem.name, // 🔥 UNIFICADO
                     downloadUrl: currentActiveItem.downloadUrl,
-                    category: categoria,
+                    category: currentActiveItem.category || "general",
                     timestamp: Date.now(),
                     status: 'pendiente'
                 };
@@ -348,63 +355,60 @@
         // CONTROLADOR DE ACCIONES EN PANEL ADMINISTRADOR (APROBAR/RECHAZAR)
             window.approveSuggestion = async (cloudId) => {
                 try {
-
                     const ref = doc(dbInstance, "sugerencias", cloudId);
 
-                    // 🔥 1. PRIMERO toma lo que tienes en memoria (editado)
-                    const localItem = window.recursosSugeridos.find(r => r.cloudId === cloudId);
+                    // 🔥 SIEMPRE obtener lo más reciente de Firebase
+                    const snap = await getDoc(ref);
 
-                    if (!localItem) {
-                        console.error("❌ No se encontró en memoria");
+                    if (!snap.exists()) {
+                        console.error("❌ No existe el documento");
                         return;
                     }
 
-                    // 🔥 2. GUARDA LOS CAMBIOS EDITADOS EN FIREBASE
-                    await setDoc(ref, localItem, { merge: true });
-
-                    // 🔥 3. AHORA SÍ lee actualizado
-                    const snap = await getDoc(ref);
                     const item = snap.data();
 
-                    // 🔥 4. CREAR RECURSO FINAL
+                    // 🔥 NORMALIZAR (pero sin perder datos)
                     const finalResource = {
                         id: cloudId,
 
+                        // 🔥 CAMPOS PRINCIPALES
                         name: item.name || "Sin nombre",
                         category: item.category || "programas",
-
                         tagline: item.tagline || "",
                         description: item.description || "",
 
+                        // 🔥 METADATA
                         size: item.size || "Por definir",
                         so: item.so || "Multiplataforma",
                         format: item.format || "Directo",
 
+                        // 🔥 VISUAL
                         icon: item.icon || getIconByCategory(item.category),
+                        color: item.color || "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
 
-                        color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                        // 🔥 LINK (IMPORTANTE)
+                        downloadUrl: item.link || item.downloadUrl || "#",
 
-                        downloadUrl: item.downloadUrl || item.link || "#",
-
-                        isFeatured: true,
+                        // 🔥 CONTROL
+                        isFeatured: item.isFeatured ?? true,
                         fromCloud: true,
 
-                        date: new Date().toLocaleDateString()
+                        date: item.date || new Date().toLocaleDateString()
                     };
 
-                    // 🔥 5. GUARDAR EN APROBADOS
+                    // 🔥 GUARDAR TAL CUAL
                     await setDoc(
                         doc(dbInstance, "recursos_aprobados", cloudId),
                         finalResource
                     );
 
-                    // 🔥 6. BORRAR SUGERENCIA
+                    // 🔥 BORRAR DE SUGERENCIAS
                     await deleteDoc(ref);
 
-                    showToast("Aprobado", "Ahora sí respeta los cambios", "check-circle");
+                    showToast("Aprobado", "Se guardó con datos actualizados", "check-circle");
 
                 } catch (e) {
-                    console.error("❌ Error aprobando:", e);
+                    console.error("❌ Error:", e);
                 }
             };
 
@@ -511,7 +515,7 @@
                                 <i data-lucide="alert-circle" class="w-4 h-4"></i>
                                 <span class="text-xs font-bold uppercase tracking-wider">RECURSO INACCESIBLE</span>
                             </div>
-                            <h4 class="text-white font-bold text-md mt-1">${item.resourceName}</h4>
+                            <h4 class="text-white font-bold text-md mt-1">${item.name}</h4>
                             <p class="text-xs text-gray-400">
                                 Estado: <span class="text-yellow-400">${item.status}</span>
                             </p>
